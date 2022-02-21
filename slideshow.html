@@ -1,0 +1,415 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+
+<style>
+* {box-sizing:border-box}
+
+/* Slideshow container */
+.slideshow-container {
+  max-width: 100%;
+  max-height: 100%;
+  position: relative;
+  margin: auto;
+}
+
+/* Hide the images by default */
+.mySlides {
+  display: none;
+}
+</style>
+
+<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=utf-8">
+
+<TITLE>Program that uses WebGazer.js</TITLE>
+
+<script src="webgazer.js"></script>
+<script>
+
+// Function to download data to a file
+function download(data, filename, type) {
+    var file = new Blob([data], {type: type});
+    if (window.navigator.msSaveOrOpenBlob) // IE10+
+        window.navigator.msSaveOrOpenBlob(file, filename);
+    else { // not IE10+
+        var a = document.createElement("a"),
+        url = URL.createObjectURL(file);
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function() {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }, 0);
+    }
+}
+
+var get_data = false;
+var arr = [];
+
+/*
+ * Called whenever we get new gaze data
+ * data = object containing an x and y key which are the x and y prediction coordinates (no bounds limiting)
+ * clock = elapsed time in milliseconds since webgazer.begin() was called
+ */
+function gaze (data, clock) {
+
+    var result = document.getElementById("result");
+    var target = document.getElementById("target1");
+
+    if (data != null && get_data==true) {
+
+        var x = data.x;
+        var y = data.y;
+        if (slideIndex%2!=0) //push back none empty image data
+            arr.push([slideIndex, clock, x, y]);
+    }
+}
+
+var slideIndex=0;
+var quartered = false;
+var halved = false;
+var th_quartered = false;
+function showSlides() {
+    var timeout_len = 1000;
+    var i;
+    var slides = document.getElementsByClassName("mySlides");
+
+    if (slideIndex > 0) {
+        slides[slideIndex-1].style.display = "none";
+    }
+
+    console.log(slides.length);
+
+    if ((quartered==false) && ((slideIndex+1) > (slides.length / 4))) {
+        download(arr, "img_data_after_photoshop_0.csv", "text/csv");
+        arr = [];
+        quartered = true;
+        timeout_len = 10000;
+    } else if ((halved==false) && ((slideIndex+1) > (slides.length / 2))) {
+        download(arr, "img_data_after_photoshop_1.csv", "text/csv");
+        arr = [];
+        halved = true;
+        timeout_len = 10000;
+    } else if ((th_quartered==false) && ((slideIndex+1) > (3*slides.length / 4))) {
+        download(arr, "img_data_before_photoshop_0.csv", "text/csv");
+        arr = [];
+        th_quartered = true;
+        timeout_len = 10000;
+    } else if ((slideIndex+1) > slides.length) {
+        download(arr, "img_data_before_photoshop_1.csv", "text/csv");
+        arr = [];
+        return;
+    }
+    slideIndex++;
+    slides[slideIndex-1].style.display = "block";
+
+    if (slideIndex%2==0) {
+        setTimeout(showSlides, timeout_len); // Change black screen every 1 second
+    } else {
+        setTimeout(showSlides, 5000); // Change image every 5 seconds
+    }
+}
+
+// Update the count down every 1 second
+function countDown(webgazerInstance) {
+    var count = 30;
+
+    var x = setInterval(function() {
+        document.getElementById("header").innerHTML =
+            "TO CALIBRATE:<br> click on a few locations within the screen<br>"
+            +"while looking purposefully at the cursor.<br>"
+            +"Both clicks and cursor movements<br>"
+            +"make the predictions more accurate<br>"
+            + (count-20) + "s until calibration";
+
+        count = count - 1;
+
+        if (count < 20) {
+            document.getElementById("header").innerHTML = count + "s of calibration remaining";
+        }
+
+        // If the count down is over, write some text 
+        if (count < 0) {
+
+            var slideIndex = 0;
+            clearInterval(x);
+            document.getElementById("header").style.display = "none";
+
+            webgazerInstance.showVideoPreview(false)
+                            .showPredictionPoints(false);
+            get_data = true;
+            showSlides();
+        }
+    }, 1000);
+}
+
+var webgazerInstance;
+
+window.onload = async function() {
+    webgazerInstance = await webgazer.setRegression('ridge') /* currently must set regression and tracker */
+      .setTracker('TFFacemesh')
+      .begin();
+
+    webgazerInstance.showVideoPreview(true) /* shows all video previews */
+      .showPredictionPoints(true) /* shows a square every 100 milliseconds where current prediction is */
+      .applyKalmanFilter(true); // Kalman Filter defaults to on.
+
+    webgazer.setGazeListener(gaze);
+
+    countDown(webgazerInstance);
+};
+
+</script>
+
+</head>
+
+<BODY LANG="en-US" LINK="#0000ff" DIR="LTR">
+
+    <div>
+        <h1 id="header" align="center"></h1>
+    </div>
+
+    <div id="slides" class="slideshow-container">
+
+        <div class="mySlides fade">
+            <img src="imgs/i0.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i1.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i2.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i3.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i4.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i5.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i6.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i7.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i8.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i9.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i10.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i11.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i12.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i13.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i14.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i15.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i16.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i17.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i18.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i19.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i20.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i21.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i22.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i23.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i24.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i25.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i26.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i27.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i28.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i29.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i30.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i31.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i32.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i33.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i34.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i35.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i36.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i37.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i38.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides">
+            <img src="imgs/blackScreen.jpg" style="width:100%; height:100%;">
+        </div>
+        <div class="mySlides fade">
+            <img src="imgs/i39.jpg" style="width:100%; height:100%;">
+        </div>
+    </div>
+</BODY>
+</HTML>
